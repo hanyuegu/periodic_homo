@@ -125,15 +125,15 @@ for iter in range(10):
     print(v.ufl_shape)
     print(v.vector().get_local())
 
-    # Chom = np.zeros((3, 3))
-    # for (j, case) in enumerate(["Exx", "Eyy", "Exy"]):
-    #     print("Solving {} case...".format(case))
-    #     Eps.assign(Constant(macro_strain(j)))
-    #     solve(a == L, w)
-    #     (v, lamb) = split(w)
-    #     Sigma = np.zeros((3,))
-    #     for k in range(3):
-    #         Sigma[k] = assemble(sum([stress2Voigt(sigma_(v, i, Eps))[k]*dx(i) for i in range(nphases)]))/vol
-    #     Chom[j, :] = Sigma
+    Chom = np.zeros((3, 3))
+    for (j, case) in enumerate(["Exx", "Eyy", "Exy"]):
+        print("Solving {} case...".format(case))
+        Eps.assign(Constant(macro_strain(j)))
+        solve(a == L, w)
+        (v, lamb) = split(w)
+        Sigma = np.zeros((3,))
+        for k in range(3):
+            Sigma[k] = assemble(sum([stress2Voigt(sigma_(v, i, Eps))[k]*dx(i) for i in range(nphases)]))/vol
+        Chom[j, :] = Sigma
 
-    # print(np.array_str(Chom, precision=2))
+    print(np.array_str(Chom, precision=2))
