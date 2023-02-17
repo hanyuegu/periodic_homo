@@ -5,7 +5,7 @@ import numpy
 def solver(k_values):
     # Create mesh and define function space
     mesh = UnitSquareMesh(4, 6)
-    V = FunctionSpace(mesh, "Lagrange", 2)
+    V = FunctionSpace(mesh, "Lagrange", 1)
 
     # Define subdomains
     subdomains = MeshFunction('size_t', mesh, 2)
@@ -27,12 +27,10 @@ def solver(k_values):
     k = Function(V0)
     help = numpy.asarray(subdomains.array(), dtype=numpy.int32)
     k.vector()[:] = numpy.choose(help, k_values)
-    # print('k degree of freedoms:', k.vector().get_local())
+    print('k degree of freedoms:', k.vector().get_local())
 
     plot(subdomains, title='subdomains')
     # plt.show()
-
-    V = FunctionSpace(mesh, 'Lagrange', 1)
 
     # Define Dirichlet conditions for y=0 boundary
     tol = 1E-14   # tolerance for coordinate comparisons
@@ -49,22 +47,20 @@ def solver(k_values):
 
     bcs = [Gamma_0, Gamma_1]
 
-    # Define variational problem
+    # define corrector equation
     u = TrialFunction(V)
     v = TestFunction(V)
     f = Constant(0)
-    a = k*inner(nabla_grad(u), nabla_grad(v))*dx
+    a = inner(k*(nabla_grad(u) + Constant((1,0))),nabla_grad(v))*dx
     L = f*v*dx
+    # F = k * inner(nabla_grad(u), nabla_grad(v)) * dx + k * nabla_grad(v) * dx
+    # a, L = lhs(F), rhs(F)
 
-    # Compute solution
+    # Compute first order corrector
     u = Function(V)
     solve(a == L, u, bcs)
 
-    K_eff = numpy.zeros((1,2))
-    for j in range(2):
-        K_eff[0,j] = assemble(k*grad(u)[j]*dx)
-
-    return u,mesh,K_eff
+    return u,mesh
 
 def show_plot(u,mesh):
     plot(u)
@@ -74,9 +70,9 @@ def show_plot(u,mesh):
 
 if __name__ == '__main__':
     k_values = [1.5, 50]  # values of k in the two subdomains
-    u,mesh,K_eff = solver(k_values)
-    print("K_eff", K_eff)
-    show_plot(u,mesh)
+    chi,mesh = solver(k_values) 
+    print(numpy.array(chi.vector()).shape)
+    show_plot(chi,mesh)
 
     # k_list = numpy.random.normal(0, 1, (1000,2))
     # k_list = k_list + k_values

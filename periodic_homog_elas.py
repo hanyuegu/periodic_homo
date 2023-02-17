@@ -13,9 +13,9 @@ vertices = np.array([[0, 0.],
                      [a, 0.],
                      [a+c, b],
                      [c, b]])
-mesh = Mesh("/mnt/c/Users/Hanyue/Desktop/periodic_homog_elas/hexag_incl.xml")
-subdomains = MeshFunction("size_t", mesh, "/mnt/c/Users/Hanyue/Desktop/periodic_homog_elas/hexag_incl_physical_region.xml")
-facets = MeshFunction("size_t", mesh, "/mnt/c/Users/Hanyue/Desktop/periodic_homog_elas/hexag_incl_facet_region.xml")
+mesh = Mesh("/mnt/c/Users/Hanyue/Desktop/periodic_homo/hexag_incl.xml")
+subdomains = MeshFunction("size_t", mesh, "/mnt/c/Users/Hanyue/Desktop/periodic_homo/hexag_incl_physical_region.xml")
+facets = MeshFunction("size_t", mesh, "/mnt/c/Users/Hanyue/Desktop/periodic_homo/hexag_incl_facet_region.xml")
 plt.figure()
 plot(subdomains)
 plt.show()
@@ -97,7 +97,9 @@ for (j, case) in enumerate(["Exx", "Eyy", "Exy"]):
     print("Solving {} case...".format(case))
     Eps.assign(Constant(macro_strain(j)))
     solve(a == L, w, [], solver_parameters={"linear_solver": "cg"})
-    (v, lamb) = split(w)
+    v, lamb = w.split()
+    print(v.ufl_shape)
+    print(v.vector().get_local())
     Sigma = np.zeros((3,))
     for k in range(3):
         Sigma[k] = assemble(sum([stress2Voigt(sigma(v, i, Eps))[k]*dx(i) for i in range(nphases)]))/vol
@@ -106,20 +108,20 @@ for (j, case) in enumerate(["Exx", "Eyy", "Exy"]):
 print(np.array_str(Chom, precision=2))
 
 
-lmbda_hom = Chom[0, 1]
-mu_hom = Chom[2, 2]
-print(Chom[0, 0], lmbda_hom + 2*mu_hom)
+# lmbda_hom = Chom[0, 1]
+# mu_hom = Chom[2, 2]
+# print(Chom[0, 0], lmbda_hom + 2*mu_hom)
 
-E_hom = mu_hom*(3*lmbda_hom + 2*mu_hom)/(lmbda_hom + mu_hom)
-nu_hom = lmbda_hom/(lmbda_hom + mu_hom)/2
-print("Apparent Young modulus:", E_hom)
-print("Apparent Poisson ratio:", nu_hom)
+# E_hom = mu_hom*(3*lmbda_hom + 2*mu_hom)/(lmbda_hom + mu_hom)
+# nu_hom = lmbda_hom/(lmbda_hom + mu_hom)/2
+# print("Apparent Young modulus:", E_hom)
+# print("Apparent Poisson ratio:", nu_hom)
 
 
-# plotting deformed unit cell with total displacement u = Eps*y + v
-y = SpatialCoordinate(mesh)
-plt.figure()
-p = plot(0.5*(dot(Eps, y)+v), mode="displacement", title=case)
-plt.colorbar(p)
-plt.show()
+# # plotting deformed unit cell with total displacement u = Eps*y + v
+# y = SpatialCoordinate(mesh)
+# plt.figure()
+# p = plot(0.5*(dot(Eps, y)+v), mode="displacement", title=case)
+# plt.colorbar(p)
+# plt.show()
 

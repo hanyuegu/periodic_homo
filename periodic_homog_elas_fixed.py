@@ -2,8 +2,6 @@ from __future__ import print_function
 from dolfin import *
 import numpy as np
 import matplotlib.pyplot as plt
-import random
-from time import *
 
 a = 1.         # unit cell width
 b = sqrt(3.)/2. # unit cell height
@@ -18,9 +16,9 @@ vertices = np.array([[0, 0.],
 mesh = Mesh("/mnt/c/Users/Hanyue/Desktop/periodic_homo/hexag_incl.xml")
 subdomains = MeshFunction("size_t", mesh, "/mnt/c/Users/Hanyue/Desktop/periodic_homo/hexag_incl_physical_region.xml")
 facets = MeshFunction("size_t", mesh, "/mnt/c/Users/Hanyue/Desktop/periodic_homo/hexag_incl_facet_region.xml")
-plt.figure()
-plot(subdomains)
-plt.show()
+# plt.figure()
+# plot(subdomains)
+# plt.show()
 
 # class used to define the periodic boundary map
 class PeriodicBoundary(SubDomain):
@@ -54,93 +52,84 @@ class PeriodicBoundary(SubDomain):
             y[0] = x[0] - self.a2[0]
             y[1] = x[1] - self.a2[1]
 
-
 Em = 50e3
 num = 0.2
-# Er = 210e3
-# nur = 0.3
-# material_parameters = [(Em, num), (Er, nur)]
-
-
+Er = 210e3
+nur = 0.3
+material_parameters = [(Em, num), (Er, nur)]
+nphases = len(material_parameters)
 def eps(v):
     return sym(grad(v))
-
 def sigma(v, i, Eps):
     E, nu = material_parameters[i]
     lmbda = E*nu/(1+nu)/(1-2*nu)
     mu = E/2/(1+nu)
     return lmbda*tr(eps(v) + Eps)*Identity(2) + 2*mu*(eps(v)+Eps)
 
-def macro_strain(i):
-    """returns the macroscopic strain for the 3 elementary load cases"""
-    Eps_Voigt = np.zeros((3,))
-    Eps_Voigt[i] = 1
-    return np.array([[Eps_Voigt[0], Eps_Voigt[2]/2.], 
-                    [Eps_Voigt[2]/2., Eps_Voigt[1]]])
-
-def stress2Voigt(s):
-    return as_vector([s[0,0], s[1,1], s[0,1]])
-
-
 Ve = VectorElement("CG", mesh.ufl_cell(), 2)
 Re = VectorElement("R", mesh.ufl_cell(), 0)
 W = FunctionSpace(mesh, MixedElement([Ve, Re]), constrained_domain=PeriodicBoundary(vertices, tolerance=1e-10))
-V = FunctionSpace(mesh, Ve)
 
 v_,lamb_ = TestFunctions(W)
 dv, dlamb = TrialFunctions(W)
 w = Function(W)
 dx = Measure('dx')(subdomain_data=subdomains)
 
-s = np.zeros((3, 3))
+Eps = Constant(((0, 0), (0, 0)))
+# F = sum([inner(sigma(dv, i, Eps), eps(v_))*dx(i) for i in range(nphases)])
+F = sum([inner(nabla_grad(v_)[0,:] + Constant((1,0)), sigma(dv, i, Eps)[0,:])*dx(i) for i in range(nphases)]
+         + [inner(nabla_grad(v_)[1,:] + Constant((0,1)), sigma(dv, i, Eps)[1,:])*dx(i) for i in range(nphases)])
+a, L = lhs(F), rhs(F)
+a += dot(lamb_,dv)*dx + dot(dlamb,v_)*dx
 
-begin_time = time()
-for iter in range(100):
-    print('iteration:',iter)
-    Er = random.gauss(210e3, 10)
-    # Er = 210e3
-    nur = random.gauss(0.3, 0.05)
-    material_parameters = [(Em, num), (Er, nur)]
-    nphases = len(material_parameters)
-    print("material_parameters:", material_parameters)
-
-
-    Eps = Constant(((0, 0), (0, 0)))
-    F = sum([inner(sigma(dv, i, Eps), eps(v_))*dx(i) for i in range(nphases)])
-    a, L = lhs(F), rhs(F)
-    a += dot(lamb_,dv)*dx + dot(dlamb,v_)*dx
+solve(a == L, w)
+uh_w, mh_w = w.split()
+print(uh_w.ufl_shape)
+print(uh_w.vector().get_local())
+plot(uh_w)
+plt.show()
+plot(mh_w)
+plt.show()
 
 
-    Chom = np.zeros((3, 3))
-    for (j, case) in enumerate(["Exx", "Eyy", "Exy"]):
-        print("Solving {} case...".format(case))
-        Eps.assign(Constant(macro_strain(j)))
-        solve(a == L, w, [], solver_parameters={"linear_solver": "gmres"})
-        (v, lamb) = split(w)
-        Sigma = np.zeros((3,))
-        for k in range(3):
-            Sigma[k] = assemble(sum([stress2Voigt(sigma(v, i, Eps))[k]*dx(i) for i in range(nphases)]))/vol
-        Chom[j, :] = Sigma
-
-    print(np.array_str(Chom, precision=2))
-
-    s = s + Chom
-
-print(s)
-
-expection = s/100
-print("C^hom:",expection)
+# def macro_strain(i):
+#     """returns the macroscopic strain for the 3 elementary load cases"""
+#     Eps_Voigt = np.zeros((3,))
+#     Eps_Voigt[i] = 1
+#     return np.array([[Eps_Voigt[0], Eps_Voigt[2]/2.], 
+#                     [Eps_Voigt[2]/2., Eps_Voigt[1]]])
+# def stress2Voigt(s):
+#     return as_vector([s[0,0], s[1,1], s[0,1]])
 
 
-lmbda_hom = Chom[0, 1]
-mu_hom = Chom[2, 2]
-print(Chom[0, 0], lmbda_hom + 2*mu_hom)
+# Chom = np.zeros((3, 3))
+# for (j, case) in enumerate(["Exx", "Eyy", "Exy"]):
+#     print("Solving {} case...".format(case))
+#     Eps.assign(Constant(macro_strain(j)))
+#     solve(a == L, w)
+#     (v, lamb) = split(w)
+#     Sigma = np.zeros((3,))
+#     for k in range(3):
+#         Sigma[k] = assemble(sum([stress2Voigt(sigma(v, i, Eps))[k]*dx(i) for i in range(nphases)]))/vol
+#     Chom[j, :] = Sigma
 
-E_hom = mu_hom*(3*lmbda_hom + 2*mu_hom)/(lmbda_hom + mu_hom)
-nu_hom = lmbda_hom/(lmbda_hom + mu_hom)/2
-print("Apparent Young modulus:", E_hom)
-print("Apparent Poisson ratio:", nu_hom)
+# print(np.array_str(Chom, precision=2))
 
-end_time = time()
-run_time = end_time-begin_time
-print ("runtime:",run_time)
+
+# lmbda_hom = Chom[0, 1]
+# mu_hom = Chom[2, 2]
+# print(Chom[0, 0], lmbda_hom + 2*mu_hom)
+
+# E_hom = mu_hom*(3*lmbda_hom + 2*mu_hom)/(lmbda_hom + mu_hom)
+# nu_hom = lmbda_hom/(lmbda_hom + mu_hom)/2
+# print("Apparent Young modulus:", E_hom)
+# print("Apparent Poisson ratio:", nu_hom)
+
+
+# # plotting deformed unit cell with total displacement u = Eps*y + v
+# y = SpatialCoordinate(mesh)
+# plt.figure()
+# p = plot(0.5*(dot(Eps, y)+v), mode="displacement", title=case)
+# plt.colorbar(p)
+# plt.show()
+
