@@ -104,12 +104,45 @@ if __name__ == '__main__':
     k_values = [1.5, 50]  # values of k in the two subdomains
     # A_bar = solver(k_values)
     # print("A_bar", A_bar)
-
-    k_list = numpy.random.normal(0, 1, (5,2))
+    k_list = numpy.random.normal(0, 1, (10000,2))
     k_list = k_list + k_values
     # print(k_list)
+    A_bar_11 = []
+    A_bar_12 = []
+    A_bar_21 = []
+    A_bar_22 = []
     for k_values in k_list:
         k_values = k_values.tolist()
         A_bar= solver(k_values)
-        print("k_values", k_values)
-        print("A_bar", A_bar)
+        A_bar_11.append(A_bar[0,0])
+        A_bar_12.append(A_bar[0,1])
+        A_bar_21.append(A_bar[1,0])
+        A_bar_22.append(A_bar[1,1])
+        # print("k_values", k_values)
+        # print("A_bar", A_bar)
+    plt.subplot(2,2,1)
+    plt.hist(A_bar_11,label="The mean of A_bar_11: %f\n" %(numpy.array(A_bar_11).mean()) + 
+             "The variance of A_bar_11: %f" %(numpy.array(A_bar_11).var()))
+    plt.legend()
+    plt.title("results of A_bar_11")
+    # plt.plot(numpy.array(A_bar_11).mean(), 0, c="orange", marker="o", label="The mean of A_bar_11: %f" %(numpy.array(A_bar_11).mean()))
+    # plt.plot(numpy.array(A_bar_11).var(), 0, c="green", marker="d", label="The variance of A_bar_11: %f" %(numpy.array(A_bar_11).var()))
+    
+    plt.subplot(2,2,2)
+    plt.hist(A_bar_12,label="The mean of A_bar_12: %f\n" %(numpy.array(A_bar_12).mean()) + 
+             "The variance of A_bar_12: %f" %(numpy.array(A_bar_12).var()))
+    plt.legend()
+    plt.title("results of A_bar_12")
+
+    plt.subplot(2,2,3)
+    plt.hist(A_bar_21,label="The mean of A_bar_21: %f\n" %(numpy.array(A_bar_21).mean()) + 
+             "The variance of A_bar_21: %f" %(numpy.array(A_bar_21).var()))
+    plt.legend()
+    plt.title("results of A_bar_21")
+
+    plt.subplot(2,2,4)
+    plt.hist(A_bar_22,label="The mean of A_bar_22: %f\n" %(numpy.array(A_bar_22).mean()) + 
+             "The variance of A_bar_22: %f" %(numpy.array(A_bar_22).var()))
+    plt.legend()
+    plt.title("results of A_bar_22")
+    plt.show()
